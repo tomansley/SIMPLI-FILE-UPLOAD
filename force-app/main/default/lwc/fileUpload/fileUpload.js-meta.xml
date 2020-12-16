@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<LightningComponentBundle xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>50.0</apiVersion>
+    <isExposed>true</isExposed>
+    <targets>
+        <target>lightning__AppPage</target>
+        <target>lightning__HomePage</target>
+    </targets>
+    <!-- Configuring the design attributes --><targetConfigs>
+        <targetConfig targets="lightning__HomePage,lightning__AppPage">
+            <property name="hasMainTitle"    type="Boolean" default="true"               label="Show Title" description="Indicates whether the name should be displayed or not."/>
+            <property name="mainTitle"       type="String"  default="My List View Title" label="Title" description="String used if the title is displayed. Names should be distinct within a lightning page."/>
+            <property name="acceptedFormats" type="String"  default=".csv"               label="Accepted File Formats"/>
+        </targetConfig>
+    </targetConfigs>
+</LightningComponentBundle>

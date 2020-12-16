@@ -1,0 +1,507 @@
+<!--
+  @description       : 
+  @author            : tom.h.ansley@medtronic.com
+  @last modified on  : 12-16-2020
+  @last modified by  : tom.h.ansley@medtronic.com
+  Modifications Log 
+  Ver   Date         Author                       Modification
+  1.0   12-11-2020   tom.h.ansley@medtronic.com   Initial Version
+-->
+<template>
+    <template if:true={spinner}>
+        <lightning-spinner alternative-text="Loading"></lightning-spinner>
+    </template>
+
+    <template if:true={isInit}>
+        <lightning-card>
+            <template if:true={hasMainTitle}>
+                <div slot="title">
+                    {mainTitle}
+                </div>
+            </template>
+            
+            <lightning-layout>
+                <lightning-layout-item padding="horizontal-small" style="width: 20%;">
+                    <lightning-combobox placeholder="Select File Upload Config" 
+                                        label="Select File Upload Config"
+                                        value={selectedConfig} 
+                                        onchange={handleConfigChange} 
+                                        options={configs}
+                                        variant=label-hidden>
+                    </lightning-combobox>                        
+                </lightning-layout-item>
+
+                <template if:true={selectedConfig}>
+                    <lightning-layout-item padding="horizontal-small" flexibility="auto">
+                        <lightning-file-upload name="fileUploader"
+                                               label=""
+                                               accept={acceptedFormats}
+                                               onuploadfinished={handleUploadFinished}>
+                        </lightning-file-upload>
+                    </lightning-layout-item>
+                </template>
+
+            </lightning-layout>
+        </lightning-card>
+    </template>
+
+    <template if:true={validationData}>
+        <br/>
+        <lightning-card>
+            <div slot="title">
+                Data Validation (review data and click process button to start processing all records)
+            </div>
+            <table aria-multiselectable="true" class="slds-table slds-table_bordered slds-table_fixed-layout slds-table_resizable-cols" style="table-layout:fixed" role="grid">
+                <thead>
+                    <tr class="slds-line-height_reset">
+                        <template for:each={dataHeaders} for:item="headerField">
+                            <th key={headerField} 
+                                class="slds-is-resizable slds-is-sortable slds-text-title_caps slds-is-sorted slds-is-sorted_asc" 
+                                scope="col">
+                                <div class="slds-th__action slds-grid slds-grid_vertical-align-center slds-has-flexi-truncate">
+                                    <span class="slds-truncate" title={headerField}>
+                                        {headerField}
+                                    </span>
+                                </div>
+                            </th>
+                        </template>
+                    </tr>
+                </thead>
+                <tbody>
+                    <template for:each={validationData} for:item="rowData">
+                        <tr key={rowCount} style="height: 30px;">
+                            <template for:each={rowData} for:item="cellData">
+                                <td key={cellData} data-label={cellData}>
+                                    <div class="slds-truncate" title={cellData}>
+                                        {cellData}
+                                    </div>
+                                </td>
+                            </template>
+                        </tr>
+                    </template>            
+                </tbody>
+            </table>
+            <br/>
+
+            <div class="slds-card__header slds-grid">            
+                <header class="slds-media slds-media_center slds-has-flexi-truncate">
+                    <div class="slds-media__body">
+                        <h2 class="slds-card__header-title" style="align-items: center;justify-content: center; font-size: smaller;">
+                            <span class="slds-text-heading_small slds-truncate">
+                                <div>{rowCountString}</div>
+                            </span>
+                        </h2>
+                    </div>
+                </header>
+            </div>
+
+            <div class="slds-card__header slds-grid">            
+                <header class="slds-media slds-media_center slds-has-flexi-truncate">
+                    <div class="slds-media__body">
+                        <h2 class="slds-card__header-title" style="align-items: center;justify-content: center;">
+                            <span class="slds-text-heading_small slds-truncate">
+                                <div>
+                                    <lightning-button variant="brand" label="Process" title="Process uploaded file" onclick={handleProcessClick} class="slds-m-left_x-small"></lightning-button>
+                                    <lightning-button label="Cancel" title="Cancel and upload another file" onclick={handleCancelClick} class="slds-m-left_x-small"></lightning-button>                        
+                                </div>
+                            </span>
+                        </h2>
+                    </div>
+                </header>
+            </div>
+        </lightning-card>
+    </template>
+
+    <template if:true={processingJobs}>
+        <br/>
+        <lightning-card>
+            <div slot="title">
+                Currently Running Jobs
+            </div>
+            <table aria-multiselectable="true" class="slds-table slds-table_bordered slds-table_fixed-layout slds-table_resizable-cols" style="table-layout:fixed" role="grid">
+                <thead>
+                    <tr class="slds-line-height_reset">
+                        <th class="slds-text-title_caps" scope="col">
+                            <div class="slds-th__action slds-grid slds-grid_vertical-align-center slds-has-flexi-truncate">
+                                <span class="slds-truncate" title="File Name">
+                                    File Name
+                                </span>
+                            </div>
+                        </th>
+                        <th class="slds-text-title_caps" scope="col">
+                            <div class="slds-th__action slds-grid slds-grid_vertical-align-center slds-has-flexi-truncate">
+                                <span class="slds-truncate" title="File Config">
+                                    File Config
+                                </span>
+                            </div>
+                        </th>
+                        <th class="slds-text-title_caps" scope="col">
+                            <div class="slds-th__action slds-grid slds-grid_vertical-align-center slds-has-flexi-truncate">
+                                <span class="slds-truncate" title="Status">
+                                    Status
+                                </span>
+                            </div>
+                        </th>
+                        <th class="slds-text-title_caps" scope="col">
+                            <div class="slds-th__action slds-grid slds-grid_vertical-align-center slds-has-flexi-truncate">
+                                <span class="slds-truncate" title="Operation">
+                                    Operation
+                                </span>
+                            </div>
+                        </th>
+                        <th class="slds-text-title_caps" scope="col">
+                            <div class="slds-th__action slds-grid slds-grid_vertical-align-center slds-has-flexi-truncate">
+                                <span class="slds-truncate" title="Rows In File">
+                                    Rows In File
+                                </span>
+                            </div>
+                        </th>
+                        <th class="slds-text-title_caps" scope="col">
+                            <div class="slds-th__action slds-grid slds-grid_vertical-align-center slds-has-flexi-truncate">
+                                <span class="slds-truncate" title="Rows Processed">
+                                    Rows Processed
+                                </span>
+                            </div>
+                        </th>
+                        <th class="slds-text-title_caps" scope="col">
+                            <div class="slds-th__action slds-grid slds-grid_vertical-align-center slds-has-flexi-truncate">
+                                <span class="slds-truncate" title="Successful Rows">
+                                    Successful Rows
+                                </span>
+                            </div>
+                        </th>
+                        <th class="slds-text-title_caps" scope="col">
+                            <div class="slds-th__action slds-grid slds-grid_vertical-align-center slds-has-flexi-truncate">
+                                <span class="slds-truncate" title="Failed Rows">
+                                    Failed Rows
+                                </span>
+                            </div>
+                        </th>
+                        <th class="slds-text-title_caps" scope="col">
+                            <div class="slds-th__action slds-grid slds-grid_vertical-align-center slds-has-flexi-truncate">
+                                <span class="slds-truncate" title="Ignored Rows">
+                                    Ignored Rows
+                                </span>
+                            </div>
+                        </th>
+                        <th class="slds-text-title_caps" scope="col">
+                            <div class="slds-th__action slds-grid slds-grid_vertical-align-center slds-has-flexi-truncate">
+                                <span class="slds-truncate" title="Start Time">
+                                    Start Time
+                                </span>
+                            </div>
+                        </th>
+                        <th class="slds-text-title_caps" scope="col">
+                            <div class="slds-th__action slds-grid slds-grid_vertical-align-center slds-has-flexi-truncate">
+                                <span class="slds-truncate" title="Finish Time">
+                                    Finish Time
+                                </span>
+                            </div>
+                        </th>
+                        <th class="slds-text-title_caps" scope="col">
+                            <div class="slds-th__action slds-grid slds-grid_vertical-align-center slds-has-flexi-truncate">
+                                <span class="slds-truncate" title="Results">
+                                    Results
+                                </span>
+                            </div>
+                        </th>
+                        <th class="slds-text-title_caps" scope="col">
+                            <div class="slds-th__action slds-grid slds-grid_vertical-align-center slds-has-flexi-truncate">
+                                <span class="slds-truncate" title="Action">
+                                    Action
+                                </span>
+                            </div>
+                        </th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    <template for:each={processingJobs} for:item="job">
+                        <tr key={rowCount} style="height: 30px;">
+                            <td>
+                                <div class="slds-truncate" title={job.fileName}>
+                                    {job.fileName}
+                                </div>
+                            </td>
+                            <td>
+                                <div class="slds-truncate" title={job.configName}>
+                                    {job.configName}
+                                </div>
+                            </td>
+
+                            <td>
+                                <div class="slds-truncate" title={job.status}>
+                                    {job.status}
+                                </div>
+                            </td>
+
+                            <td>
+                                <div class="slds-truncate" title={job.operation}>
+                                    {job.operation}
+                                </div>
+                            </td>
+
+                            <td>
+                                <div class="slds-truncate" title={job.rowsInFile}>
+                                    {job.rowsInFile}
+                                </div>
+                            </td>
+
+                            <td>
+                                <div class="slds-truncate" title={job.rowsProcessed}>
+                                    {job.rowsProcessed}
+                                </div>
+                            </td>
+
+                            <td>
+                                <div class="slds-truncate" title={job.totalSuccessRows}>
+                                    {job.totalSuccessRows}
+                                </div>
+                            </td>
+
+                            <td>
+                                <div class="slds-truncate" title={job.totalFailedRows}>
+                                    {job.totalFailedRows}
+                                </div>
+                            </td>
+
+                            <td>
+                                <div class="slds-truncate" title={job.totalIgnoredRows}>
+                                    {job.totalIgnoredRows}
+                                </div>
+                            </td>
+
+                            <td>
+                                <div class="slds-truncate" title={job.startTime}>
+                                    {job.startTime}
+                                </div>
+                            </td>
+
+                            <td>
+                                <div class="slds-truncate" title={job.finishTime}>
+                                    {job.finishTime}
+                                </div>
+                            </td>
+
+                            <td>
+                                <template if:true={job.resultsURL}>
+                                    <div class="slds-truncate" title={job.resultsURL}>
+                                        <a href={job.resultsURL} target="_blank" value={job.resultsURL}>Results File</a>
+                                    </div>
+                                </template>
+                            </td>
+
+                            <td>
+                                <template if:true={job.jobId}>
+                                    <div class="slds-truncate" title="Action">
+                                        <lightning-button variant="brand" label="Abort" title="Abort processing" value={job.jobId} onclick={handleJobAbortClick} class="slds-m-left_x-small"></lightning-button>
+                                    </div>
+                                </template>
+                            </td>
+
+                        </tr>
+                    </template>            
+                </tbody>
+            </table>
+            <br/>
+
+            <div class="slds-card__header slds-grid">            
+                <header class="slds-media slds-media_center slds-has-flexi-truncate">
+                    <div class="slds-media__body">
+                        <h2 class="slds-card__header-title">
+                            <span class="slds-text-heading_small slds-truncate">
+                                <div slot="title">Completed Jobs Last 7 Days</div>
+                            </span>
+                        </h2>
+                    </div>
+                </header>
+            </div>
+
+            <table aria-multiselectable="true" class="slds-table slds-table_bordered slds-table_fixed-layout slds-table_resizable-cols" style="table-layout:fixed" role="grid">
+                <thead>
+                    <tr class="slds-line-height_reset">
+                        <th class="slds-text-title_caps" scope="col">
+                            <div class="slds-th__action slds-grid slds-grid_vertical-align-center slds-has-flexi-truncate">
+                                <span class="slds-truncate" title="File Name">
+                                    File Name
+                                </span>
+                            </div>
+                        </th>
+                        <th class="slds-text-title_caps" scope="col">
+                            <div class="slds-th__action slds-grid slds-grid_vertical-align-center slds-has-flexi-truncate">
+                                <span class="slds-truncate" title="File Config">
+                                    File Config
+                                </span>
+                            </div>
+                        </th>
+                        <th class="slds-text-title_caps" scope="col">
+                            <div class="slds-th__action slds-grid slds-grid_vertical-align-center slds-has-flexi-truncate">
+                                <span class="slds-truncate" title="Status">
+                                    Status
+                                </span>
+                            </div>
+                        </th>
+                        <th class="slds-text-title_caps" scope="col">
+                            <div class="slds-th__action slds-grid slds-grid_vertical-align-center slds-has-flexi-truncate">
+                                <span class="slds-truncate" title="Operation">
+                                    Operation
+                                </span>
+                            </div>
+                        </th>
+                        <th class="slds-text-title_caps" scope="col">
+                            <div class="slds-th__action slds-grid slds-grid_vertical-align-center slds-has-flexi-truncate">
+                                <span class="slds-truncate" title="Rows In File">
+                                    Rows In File
+                                </span>
+                            </div>
+                        </th>
+                        <th class="slds-text-title_caps" scope="col">
+                            <div class="slds-th__action slds-grid slds-grid_vertical-align-center slds-has-flexi-truncate">
+                                <span class="slds-truncate" title="Rows Processed">
+                                    Rows Processed
+                                </span>
+                            </div>
+                        </th>
+                        <th class="slds-text-title_caps" scope="col">
+                            <div class="slds-th__action slds-grid slds-grid_vertical-align-center slds-has-flexi-truncate">
+                                <span class="slds-truncate" title="Successful Rows">
+                                    Successful Rows
+                                </span>
+                            </div>
+                        </th>
+                        <th class="slds-text-title_caps" scope="col">
+                            <div class="slds-th__action slds-grid slds-grid_vertical-align-center slds-has-flexi-truncate">
+                                <span class="slds-truncate" title="Failed Rows">
+                                    Failed Rows
+                                </span>
+                            </div>
+                        </th>
+                        <th class="slds-text-title_caps" scope="col">
+                            <div class="slds-th__action slds-grid slds-grid_vertical-align-center slds-has-flexi-truncate">
+                                <span class="slds-truncate" title="Ignored Rows">
+                                    Ignored Rows
+                                </span>
+                            </div>
+                        </th>
+                        <th class="slds-text-title_caps" scope="col">
+                            <div class="slds-th__action slds-grid slds-grid_vertical-align-center slds-has-flexi-truncate">
+                                <span class="slds-truncate" title="Start Time">
+                                    Start Time
+                                </span>
+                            </div>
+                        </th>
+                        <th class="slds-text-title_caps" scope="col">
+                            <div class="slds-th__action slds-grid slds-grid_vertical-align-center slds-has-flexi-truncate">
+                                <span class="slds-truncate" title="Finish Time">
+                                    Finish Time
+                                </span>
+                            </div>
+                        </th>
+                        <th class="slds-text-title_caps" scope="col">
+                            <div class="slds-th__action slds-grid slds-grid_vertical-align-center slds-has-flexi-truncate">
+                                <span class="slds-truncate" title="Results">
+                                    Results
+                                </span>
+                            </div>
+                        </th>
+                        <th class="slds-text-title_caps" scope="col">
+                            <div class="slds-th__action slds-grid slds-grid_vertical-align-center slds-has-flexi-truncate">
+                                <span class="slds-truncate" title="Action">
+                                    Action
+                                </span>
+                            </div>
+                        </th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    <template for:each={completedJobs} for:item="job">
+                        <tr key={rowCount} style="height: 30px;">
+                            <td>
+                                <div class="slds-truncate" title={job.fileName}>
+                                    {job.fileName}
+                                </div>
+                            </td>
+                            <td>
+                                <div class="slds-truncate" title={job.configName}>
+                                    {job.configName}
+                                </div>
+                            </td>
+
+                            <td>
+                                <div class="slds-truncate" title={job.status}>
+                                    {job.status}
+                                </div>
+                            </td>
+
+                            <td>
+                                <div class="slds-truncate" title={job.operation}>
+                                    {job.operation}
+                                </div>
+                            </td>
+
+                            <td>
+                                <div class="slds-truncate" title={job.rowsInFile}>
+                                    {job.rowsInFile}
+                                </div>
+                            </td>
+
+                            <td>
+                                <div class="slds-truncate" title={job.rowsProcessed}>
+                                    {job.rowsProcessed}
+                                </div>
+                            </td>
+
+                            <td>
+                                <div class="slds-truncate" title={job.totalSuccessRows}>
+                                    {job.totalSuccessRows}
+                                </div>
+                            </td>
+
+                            <td>
+                                <div class="slds-truncate" title={job.totalFailedRows}>
+                                    {job.totalFailedRows}
+                                </div>
+                            </td>
+
+                            <td>
+                                <div class="slds-truncate" title={job.totalIgnoredRows}>
+                                    {job.totalIgnoredRows}
+                                </div>
+                            </td>
+
+                            <td>
+                                <div class="slds-truncate" title={job.startTime}>
+                                    {job.startTime}
+                                </div>
+                            </td>
+
+                            <td>
+                                <div class="slds-truncate" title={job.finishTime}>
+                                    {job.finishTime}
+                                </div>
+                            </td>
+
+                            <td>
+                                <template if:true={job.resultsURL}>
+                                    <div class="slds-truncate" title={job.resultsURL}>
+                                        <a href={job.resultsURL} target="_blank" value={job.resultsURL}>Results File</a>
+                                    </div>
+                                </template>
+                            </td>
+
+                            <td>
+                                <div class="slds-truncate" title="Action">
+                                    <lightning-button variant="brand" label="Delete" title="Delete job" value={job.jobId} onclick={handleJobDeleteClick} class="slds-m-left_x-small"></lightning-button>
+                                </div>
+                            </td>
+
+                        </tr>
+                    </template>            
+                </tbody>
+            </table>
+        </lightning-card>
+    </template>
+
+
+</template>
